@@ -738,13 +738,42 @@ function getregs(hTask)
 {
     var i;
     var tcb;
-    var aRegs = new Array(16);
+    var aRegs = new Array(17);
+    var SP;
 
-    // copy the registers stored on the task stack to the output array
-    for (i = 0; i < 16; i++)
-    {
-        aRegs[i] =0;
+    SP = Debug.evaluate("(uint32_t)(*(OS_TCB*)" + hTask + ").StkPtr");
+    Addr = SP;
+
+    // R4-R11
+    for (i = 4; i < 12; i++) {
+        aRegs[i] = TargetInterface.peekWord(Addr);
+        Addr += 4;
     }
+
+    // Skip PendSV LR
+    Addr += 4;
+
+    // R0-R3
+    for (i = 0; i < 4; i++) {
+        aRegs[i] = TargetInterface.peekWord(Addr);
+        Addr += 4;
+    }
+    
+    aRegs[12] = TargetInterface.peekWord(Addr); // R12
+    Addr += 4;
+    aRegs[14] = TargetInterface.peekWord(Addr); // R14 - LR
+    Addr += 4;
+    aRegs[15] = TargetInterface.peekWord(Addr); // R15 - PC
+    Addr += 4;
+    aRegs[16] = TargetInterface.peekWord(Addr); // PSR
+    Addr += 4;
+    aRegs[13] = Addr; // sp
+
+    ctx_sw = Debug.evaluate("CPU_SR_Restore") + 4;
+    if (ctx_sw != undefined && ctx_sw == aRegs[15]) {
+        aRegs[15] = aRegs[14];
+    }
+
     return aRegs;
 }
 
